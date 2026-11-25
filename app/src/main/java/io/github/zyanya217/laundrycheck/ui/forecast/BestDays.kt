@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -171,16 +173,18 @@ private fun DayColumn(pick: DayPick, isBest: Boolean, locale: Locale, modifier: 
         } else {
             Text(stringResource(R.string.best_nodata), modifier = Modifier.padding(top = 4.dp), color = muted, fontSize = 13.sp)
         }
-        Box(Modifier.padding(top = 4.dp).height(18.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.padding(top = 4.dp).heightIn(min = 18.dp), contentAlignment = Alignment.Center) {
             if (isBest) {
                 Text(
                     stringResource(R.string.best_top),
                     modifier = Modifier
                         .background(MaterialTheme.laundry.ok, CircleShape)
-                        .padding(horizontal = 10.dp),
+                        .padding(horizontal = 10.dp, vertical = 2.dp),
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
+                    lineHeight = 14.sp,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                 )
             }
         }
