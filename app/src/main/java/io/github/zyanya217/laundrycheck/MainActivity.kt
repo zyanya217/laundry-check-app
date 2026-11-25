@@ -4,29 +4,56 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.zyanya217.laundrycheck.ui.forecast.ForecastScreen
+import io.github.zyanya217.laundrycheck.ui.forecast.ForecastViewModel
+import io.github.zyanya217.laundrycheck.ui.settings.SettingsSheet
+import io.github.zyanya217.laundrycheck.ui.settings.SettingsViewModel
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryTheme
+import io.github.zyanya217.laundrycheck.ui.theme.isDark
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val forecastViewModel: ForecastViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LaundryTheme {
+            val state by forecastViewModel.uiState.collectAsStateWithLifecycle()
+            // Kept across the activity restart that a language change causes, so the sheet stays open.
+            var sheetOpen by rememberSaveable { mutableStateOf(false) }
+
+            LaundryTheme(darkTheme = state.settings.theme.isDark()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    // Placeholder until the forecast screen is built.
-                    Box(contentAlignment = Alignment.Center) { Text(stringResource(R.string.app_name)) }
+                    ForecastScreen(
+                        state = state,
+                        onOpenSettings = { sheetOpen = true },
+                        onReload = forecastViewModel::reload,
+                        onStartHour = forecastViewModel::setStartHour,
+                    )
+                    if (sheetOpen) {
+                        SettingsSheet(viewModel = settingsViewModel, onDismiss = { sheetOpen = false })
+                    }
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Back in the foreground: a forecast older than 15 minutes is reloaded.
+        forecastViewModel.refreshIfStale()
     }
 }
