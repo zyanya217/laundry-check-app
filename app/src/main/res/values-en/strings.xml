@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Ported from the web app's src/i18n/messages.ts. -->
 <resources>
-    <string name="app_name">Laundry Check</string>
+    <string name="app_name">晾衣判斷</string>
     <string name="settings">Settings</string>
     <string name="done">Done</string>
     <string name="loc">Location</string>
