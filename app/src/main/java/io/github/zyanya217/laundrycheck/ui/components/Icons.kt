@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// The web app's three inline SVG icons, redrawn on a 20 x 20 grid so they look the same without an icon library.
+// Icons drawn on a 20 x 20 grid without an icon library.
 
 @Composable
 private fun StrokeIcon(size: Dp, color: Color, strokeWidth: Float, modifier: Modifier, draw: DrawScope.(Stroke) -> Unit) {
@@ -40,6 +40,14 @@ fun ChevronDownIcon(color: Color, modifier: Modifier = Modifier, size: Dp = 14.d
             lineTo(15f * k, 8f * k)
         }
         drawPath(path, color, style = stroke)
+    }
+}
+
+@Composable
+fun CloseIcon(color: Color, modifier: Modifier = Modifier, size: Dp = 22.dp) {
+    StrokeIcon(size, color, 1.8f, modifier) { stroke ->
+        line(color, stroke, 5f, 5f, 15f, 15f)
+        line(color, stroke, 15f, 5f, 5f, 15f)
     }
 }
 

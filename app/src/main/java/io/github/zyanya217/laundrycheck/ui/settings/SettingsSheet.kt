@@ -17,10 +17,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +55,7 @@ import io.github.zyanya217.laundrycheck.R
 import io.github.zyanya217.laundrycheck.logic.hh
 import io.github.zyanya217.laundrycheck.model.ThemeChoice
 import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
+import io.github.zyanya217.laundrycheck.ui.components.CloseIcon
 import io.github.zyanya217.laundrycheck.ui.components.LocateIcon
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryFonts
 
@@ -90,7 +93,13 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings), fontFamily = LaundryFonts.Display, fontSize = 22.sp)
-                Button(onClick = onDismiss) { Text(stringResource(R.string.done), fontWeight = FontWeight.Bold) }
+                val closeDescription = stringResource(R.string.close_settings)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.semantics { contentDescription = closeDescription },
+                ) {
+                    CloseIcon(color = MaterialTheme.colorScheme.onSurface)
+                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

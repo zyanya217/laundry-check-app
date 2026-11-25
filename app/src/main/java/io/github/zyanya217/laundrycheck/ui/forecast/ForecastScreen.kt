@@ -48,7 +48,6 @@ import io.github.zyanya217.laundrycheck.R
 import io.github.zyanya217.laundrycheck.logic.ForecastContent
 import io.github.zyanya217.laundrycheck.logic.hh
 import io.github.zyanya217.laundrycheck.logic.wallHour
-import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
 import io.github.zyanya217.laundrycheck.ui.components.SlidersIcon
 import io.github.zyanya217.laundrycheck.ui.components.monthDay
 import io.github.zyanya217.laundrycheck.ui.components.weekdayShort
@@ -139,18 +138,15 @@ private fun ForecastBody(state: ForecastUiState, content: ForecastContent, onSta
 private fun Header(place: String, onOpenSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Surface(
-            onClick = onOpenSettings,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier.weight(1f, fill = false),
         ) {
             Row(
-                modifier = Modifier.padding(start = 16.dp, end = 14.dp).height(44.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(horizontal = 16.dp).height(44.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(place, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                ChevronDownIcon(color = MaterialTheme.colorScheme.onSurface)
             }
         }
         val description = stringResource(R.string.aria_set)

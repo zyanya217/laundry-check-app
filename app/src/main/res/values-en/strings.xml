@@ -3,6 +3,7 @@
 <resources>
     <string name="app_name">晾衣判斷</string>
     <string name="settings">Settings</string>
+    <string name="close_settings">Close settings</string>
     <string name="done">Done</string>
     <string name="loc">Location</string>
     <string name="county">County</string>

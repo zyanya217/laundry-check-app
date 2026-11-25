@@ -3,6 +3,7 @@
 <resources>
     <string name="app_name">晾衣判斷</string>
     <string name="settings">設定</string>
+    <string name="close_settings">關閉設定</string>
     <string name="done">完成</string>
     <string name="loc">地點</string>
     <string name="county">縣市</string>
