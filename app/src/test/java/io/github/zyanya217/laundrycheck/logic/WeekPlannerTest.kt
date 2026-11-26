@@ -36,18 +36,18 @@ class WeekPlannerTest {
     }
 
     @Test
-    fun leavesADayWithoutEnoughForecastUnjudged() {
+    fun judgesPartialDaysAndLeavesDaysWithoutAnyHoursUnjudged() {
         val picks = evaluateWeek(week(all(Mode.CLEAR, 3)), now, 21, 8, covered = false)
         assertNotNull(picks[0].analysis)
         assertNotNull(picks[1].analysis)
-        assertNull(picks[2].analysis)
+        assertNotNull(picks[2].analysis)
         assertNull(picks[3].analysis)
     }
 
     @Test
     fun showsOnlyTheDaysThatHaveAForecast() {
-        assertEquals(2, judgedPicks(evaluateWeek(week(all(Mode.CLEAR, 3)), now, 21, 8, false)).size)
-        assertEquals(3, judgedPicks(evaluateWeek(week(all(Mode.CLEAR, 4)), now, 21, 8, false)).size)
+        assertEquals(3, judgedPicks(evaluateWeek(week(all(Mode.CLEAR, 3)), now, 21, 8, false)).size)
+        assertEquals(4, judgedPicks(evaluateWeek(week(all(Mode.CLEAR, 4)), now, 21, 8, false)).size)
         assertEquals(4, judgedPicks(evaluateWeek(week(all(Mode.CLEAR, 5)), now, 21, 8, false)).size)
         assertEquals(emptyList<DayPick>(), judgedPicks(emptyList()))
     }
@@ -82,9 +82,9 @@ class WeekPlannerTest {
     }
 
     @Test
-    fun recommendsNothingWhenEveryJudgedEveningIsBad() {
+    fun selectsTheBestAvailableEvenWhenEveryEveningIsBad() {
         val picks = evaluateWeek(week(all(Mode.RAIN, 9)), now, 21, 8, false)
-        assertNull(bestOffset(picks))
+        assertEquals(0, bestOffset(picks))
     }
 
     @Test
@@ -95,7 +95,19 @@ class WeekPlannerTest {
     @Test
     fun aRoofCanTurnABadWeekIntoARecommendableOne() {
         val rows = week(all(Mode.RAIN, 9)).map { it.copy(pop = 80.0) }
-        assertNull(bestOffset(evaluateWeek(rows, now, 21, 8, covered = false)))
+        assertEquals(Level.BAD, evaluateWeek(rows, now, 21, 8, covered = false)[0].analysis?.level)
         assertNotNull(bestOffset(evaluateWeek(rows, now, 21, 8, covered = true)))
+    }
+
+    @Test
+    fun singleHourCanWinAndEmptyDaysDoNotAppear() {
+        val rows = listOf(
+            hourRow(midnight + 21, Mode.HUMID),
+            hourRow(midnight + 2 * 24 + 21, Mode.CLEAR),
+        )
+        val picks = judgedPicks(evaluateWeek(rows, now, 21, 8, false))
+        assertEquals(listOf(0, 2), picks.map { it.offset })
+        assertEquals(2, bestOffset(picks))
+        assertEquals(evaporation(rows[1], false) * 12, picks[1].analysis!!.score, 1e-10)
     }
 }

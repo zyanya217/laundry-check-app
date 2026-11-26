@@ -27,12 +27,17 @@
     <string name="v_ok">Good to hang outside</string>
     <string name="v_mid">Borderline</string>
     <string name="v_bad">Dry it indoors</string>
-    <string name="no_data">Not enough forecast data</string>
+    <string name="no_data">Advice is temporarily unavailable</string>
     <string name="ok_dry">No rain all night. Should be dry by morning.</string>
     <string name="ok_half">No rain all night. Probably half dry by morning.</string>
     <string name="rain_mid">Rain possible %1$s–%2$s, up to %3$d%%.</string>
     <string name="rain_bad">Rain expected %1$s–%2$s, up to %3$d%%. Clothes will get wet.</string>
     <string name="humid">No rain, but the night air is humid. Clothes may still be damp.</string>
+    <string name="estimated_ok_dry">Rain chance is expected to be low. Clothes should be dry by morning.</string>
+    <string name="estimated_ok_half">Rain chance is expected to be low. Clothes will probably be half dry by morning.</string>
+    <string name="estimated_rain_mid">Rain is possible, with a chance up to %3$d%%.</string>
+    <string name="estimated_rain_bad">Rain chance is up to %3$d%%. Dry clothes indoors.</string>
+    <string name="estimated_humid">Rain chance is expected to be low, but humid air may leave clothes damp.</string>
     <string name="start_label">Start hanging</string>
     <string name="collect_label">Collect</string>
     <string name="from_note">Time has passed, counting from %1$s</string>
@@ -53,6 +58,7 @@
     <string name="z_dry">Dry</string>
     <string name="best_title">Next three evenings</string>
     <string name="best_top">Best</string>
+    <string name="best_relative">Relatively best</string>
     <string name="best_nodata">No forecast</string>
     <string name="best_rain">Rain</string>
     <string name="src_cwa">Data: Central Weather Administration open data</string>

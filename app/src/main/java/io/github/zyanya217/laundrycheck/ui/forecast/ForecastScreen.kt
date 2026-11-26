@@ -64,8 +64,7 @@ fun ForecastScreen(
     modifier: Modifier = Modifier,
 ) {
     val loading = state.status == FetchStatus.LOADING
-    // Only content with a verdict can be shown; otherwise it is "loading" or "not enough data".
-    val shown = state.content?.takeIf { it.analysis != null }
+    val shown = state.content
 
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -99,39 +98,41 @@ fun ForecastScreen(
 @Composable
 private fun ForecastBody(state: ForecastUiState, content: ForecastContent, onStartHour: (Int) -> Unit) {
     val window = content.window
-    val analysis = checkNotNull(content.analysis)
+    val analysis = content.analysis
     val locale = LocalConfiguration.current.locales[0]
 
     // "Tonight 11/20 Fri": the date of the evening being judged.
     val dayNumber = Math.floorDiv(window.startIdx, 24)
     val dateLabel = "${stringResource(R.string.tonight)} ${monthDay(dayNumber)} ${weekdayShort(dayNumber, locale)}"
     val startNote = if (window.startMoved) stringResource(R.string.from_note, hh(wallHour(window.startIdx))) else null
-    val chartLabel = if (window.rows.size < 2) {
-        ""
+    if (analysis == null) {
+        NoDataCard()
     } else {
-        stringResource(
-            R.string.chart_aria,
-            hh(wallHour(window.rows.first().idx)),
-            hh(wallHour(window.rows.last().idx)),
-            window.rows.maxOf { it.pop }.roundToInt(),
+        VerdictCard(
+            analysis = analysis,
+            dateLabel = dateLabel,
+            collectDay = window.collectDay,
+            startHour = state.settings.startHour,
+            collectHour = state.settings.collectHour,
+            startNote = startNote,
+            estimated = window.rows.size < window.expectedHours,
+            onStartHour = onStartHour,
         )
     }
-
-    VerdictCard(
-        analysis = analysis,
-        dateLabel = dateLabel,
-        collectDay = window.collectDay,
-        startHour = state.settings.startHour,
-        collectHour = state.settings.collectHour,
-        startNote = startNote,
-        onStartHour = onStartHour,
-    )
     if (content.hasWeek) {
         HorizontalDivider()
         BestDays(picks = content.picks, best = content.bestDay)
     }
-    HorizontalDivider()
-    HourlyChart(rows = window.rows, label = chartLabel)
+    if (analysis != null) {
+        HorizontalDivider()
+        val chartLabel = stringResource(
+            R.string.chart_aria,
+            hh(wallHour(window.startIdx)),
+            hh(wallHour(window.endIdx)),
+            window.rows.maxOf { it.pop }.roundToInt(),
+        )
+        HourlyChart(window = window, label = chartLabel)
+    }
 }
 
 @Composable

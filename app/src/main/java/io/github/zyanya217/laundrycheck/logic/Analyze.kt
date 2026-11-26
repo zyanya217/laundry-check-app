@@ -44,9 +44,10 @@ fun evaporation(r: HourlyRow, covered: Boolean): Double {
     return e
 }
 
-/** [rows] must not be empty; callers check for enough hours first. */
-fun analyze(rows: List<HourlyRow>, covered: Boolean): Analysis {
+/** Estimates missing hours using the mean drying power of the available hours. */
+fun analyze(rows: List<HourlyRow>, covered: Boolean, expectedHours: Int = rows.size): Analysis {
     require(rows.isNotEmpty()) { "analyze needs at least one hour" }
+    require(expectedHours >= rows.size) { "expected hours must cover all forecast hours" }
     val cf = if (covered) COVER_FACTOR else 1.0
     val effPop = rows.maxOf { it.pop } * cf
     val rain = when {
@@ -56,7 +57,8 @@ fun analyze(rows: List<HourlyRow>, covered: Boolean): Analysis {
     }
 
     val wet = rows.filter { it.pop >= POP_MID }
-    val score = rows.sumOf { evaporation(it, covered) }
+    val observedScore = rows.sumOf { evaporation(it, covered) }
+    val score = if (expectedHours == rows.size) observedScore else observedScore / rows.size * expectedHours
     val dry = when {
         score >= DRY_OK -> Dryness.DRY
         score >= DRY_HALF -> Dryness.HALF

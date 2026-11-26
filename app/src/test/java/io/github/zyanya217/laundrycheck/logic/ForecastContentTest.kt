@@ -26,11 +26,30 @@ class ForecastContentTest {
     }
 
     @Test
-    fun reportsNoAnalysisWhenTheWindowHasTooFewHours() {
+    fun estimatesFromOneHourAndIncludesItInRecommendations() {
         val c = buildForecastContent(listOf(clear(now + 8)), emptyList(), now, 21, 8, covered = false)
+        assertNotNull(c.analysis)
+        assertEquals(0, c.bestDay)
+        assertTrue(c.hasWeek)
+        assertEquals(evaporation(clear(now + 8), false) * 12, c.analysis!!.score, 1e-10)
+    }
+
+    @Test
+    fun noHoursCannotProduceAnEstimate() {
+        val c = buildForecastContent(emptyList(), emptyList(), now, 21, 8, covered = false)
         assertNull(c.analysis)
         assertNull(c.bestDay)
         assertFalse(c.hasWeek)
+    }
+
+    @Test
+    fun shortForecastAndWeekForecastFillEachOthersGaps() {
+        val short = listOf(clear(midnight + 21).copy(pop = 80.0))
+        val week = listOf(clear(midnight + 21), clear(midnight + 23))
+        val c = buildForecastContent(short, week, now, 21, 8, covered = false)
+        assertEquals(listOf(midnight + 21, midnight + 23), c.window.rows.map { it.idx })
+        assertEquals(Level.BAD, c.analysis?.level)
+        assertEquals(c.analysis, c.picks.single().analysis)
     }
 
     @Test
@@ -43,9 +62,9 @@ class ForecastContentTest {
     }
 
     @Test
-    fun skipsTheStripWhenOnlyTonightCanBeJudged() {
-        val c = buildForecastContent(hours(2), emptyList(), now, 21, 8, covered = false)
+    fun showsTheStripWhenOnlyTonightCanBeJudged() {
+        val c = buildForecastContent(hours(2).filter { it.idx <= midnight + 32 }, emptyList(), now, 21, 8, covered = false)
         assertEquals(1, c.picks.size)
-        assertFalse(c.hasWeek)
+        assertTrue(c.hasWeek)
     }
 }

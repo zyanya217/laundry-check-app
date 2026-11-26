@@ -54,4 +54,17 @@ class AnalyzeTest {
         val fast = analyze(night(12) { { copy(wind = 4.0) } }, covered = false).score
         assertTrue(fast > slow)
     }
+
+    @Test
+    fun missingHoursScaleDryingScoreButKeepObservedRainRisk() {
+        val rows = night(8) { i -> { if (i == 3) copy(pop = 80.0) else this } }
+        val observed = analyze(rows, covered = false)
+        val estimated = analyze(rows, covered = false, expectedHours = 12)
+        assertEquals(observed.score * 12 / 8, estimated.score, 1e-10)
+        assertEquals(Level.BAD, estimated.level)
+        assertEquals(observed.rainPop, estimated.rainPop, 0.0)
+        assertEquals(observed.rainFrom, estimated.rainFrom)
+        assertEquals(observed.rainTo, estimated.rainTo)
+        assertEquals(analyze(rows, false), analyze(rows, false, 8))
+    }
 }

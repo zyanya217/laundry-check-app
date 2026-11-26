@@ -9,9 +9,6 @@ import io.github.zyanya217.laundrycheck.model.HourlyRow
  */
 const val WEEK_DAYS = 4
 
-/** A day is only judged when at least this share of its hours has forecast data. */
-private const val MIN_COVERAGE = 0.6
-
 data class DayPick(
     val offset: Int,
     /** Wall-clock day number (days since the epoch), used to print the date. */
@@ -31,31 +28,28 @@ fun evaluateWeek(
 ): List<DayPick> =
     (0 until WEEK_DAYS).map { offset ->
         val w = buildWindow(rows, nowIdx, startHour, collectHour, offset)
-        val expected = w.endIdx - w.startIdx + 1
-        val enough = w.rows.size >= 2 && w.rows.size >= expected * MIN_COVERAGE
         DayPick(
             offset = offset,
             dayNumber = Math.floorDiv(w.startIdx, 24),
-            analysis = if (enough) analyze(w.rows, covered) else null,
-            maxPop = if (enough) w.rows.maxOf { it.pop } else 0.0,
+            analysis = if (w.rows.isNotEmpty()) analyze(w.rows, covered, w.expectedHours) else null,
+            maxPop = w.rows.maxOfOrNull { it.pop } ?: 0.0,
         )
     }
 
 private val levelRank = mapOf(Level.OK to 0, Level.MID to 1, Level.BAD to 2)
 
 /**
- * The offset of the best evening, or null when no evening is good enough to recommend.
+ * The offset of the best evening, or null when no evening has any data.
  * Better verdict first, then the higher dryness score, then the earlier day.
  */
 fun bestOffset(picks: List<DayPick>): Int? {
     val judged = picks.mapNotNull { p -> p.analysis?.let { p to it } }
-    val best = judged.minWithOrNull(
+    return judged.minWithOrNull(
         compareBy<Pair<DayPick, Analysis>> { levelRank.getValue(it.second.level) }
             .thenByDescending { it.second.score }
             .thenBy { it.first.offset },
-    ) ?: return null
-    return if (best.second.level == Level.BAD) null else best.first.offset
+    )?.first?.offset
 }
 
-/** Drops the trailing days that could not be judged, so the list only has days with a forecast. */
-fun judgedPicks(picks: List<DayPick>): List<DayPick> = picks.dropLastWhile { it.analysis == null }
+/** Only show evenings that can be compared. */
+fun judgedPicks(picks: List<DayPick>): List<DayPick> = picks.filter { it.analysis != null }

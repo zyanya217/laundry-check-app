@@ -34,6 +34,14 @@ class HangWindowTest {
     }
 
     @Test
+    fun hourlySlotsRetainGapsAtTheBeginningMiddleAndEnd() {
+        val sparse = listOf(rows[22], rows[24])
+        val window = buildWindow(sparse, day20 + 13, 21, 8)
+        assertEquals(12, window.expectedHours)
+        assertEquals(listOf(null, day20 + 22, null, day20 + 24) + List(8) { null }, window.hourlySlots().map { it?.idx })
+    }
+
+    @Test
     fun collectsTheSameDayWhenStartIsAfterMidnight() {
         val w = buildWindow(rows, day20 + 1, 3, 8)
         assertEquals(CollectDay.TODAY, w.collectDay)

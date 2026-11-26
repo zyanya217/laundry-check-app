@@ -39,6 +39,7 @@ import io.github.zyanya217.laundrycheck.logic.CollectDay
 import io.github.zyanya217.laundrycheck.logic.DRY_HALF
 import io.github.zyanya217.laundrycheck.logic.DRY_OK
 import io.github.zyanya217.laundrycheck.logic.Dryness
+import io.github.zyanya217.laundrycheck.logic.Reason
 import io.github.zyanya217.laundrycheck.logic.hh
 import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
 import io.github.zyanya217.laundrycheck.ui.components.color
@@ -69,6 +70,7 @@ fun VerdictCard(
     startHour: Int,
     collectHour: Int,
     startNote: String?,
+    estimated: Boolean,
     onStartHour: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,7 +96,16 @@ fun VerdictCard(
             lineHeight = 40.sp,
         )
         Text(
-            stringResource(analysis.reason.res(), from, to, analysis.rainPop.roundToInt()),
+            stringResource(
+                if (estimated) when (analysis.reason) {
+                    Reason.OK_DRY -> R.string.estimated_ok_dry
+                    Reason.OK_HALF -> R.string.estimated_ok_half
+                    Reason.RAIN_MID -> R.string.estimated_rain_mid
+                    Reason.RAIN_BAD -> R.string.estimated_rain_bad
+                    Reason.HUMID -> R.string.estimated_humid
+                } else analysis.reason.res(),
+                from, to, analysis.rainPop.roundToInt(),
+            ),
             modifier = Modifier.padding(top = 8.dp),
             fontSize = 16.sp,
         )

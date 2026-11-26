@@ -176,9 +176,9 @@ private fun DayColumn(pick: DayPick, isBest: Boolean, locale: Locale, modifier: 
         Box(Modifier.padding(top = 4.dp).heightIn(min = 18.dp), contentAlignment = Alignment.Center) {
             if (isBest) {
                 Text(
-                    stringResource(R.string.best_top),
+                    stringResource(if (analysis?.level == Level.BAD) R.string.best_relative else R.string.best_top),
                     modifier = Modifier
-                        .background(MaterialTheme.laundry.ok, CircleShape)
+                        .background(if (analysis?.level == Level.BAD) MaterialTheme.laundry.bad else MaterialTheme.laundry.ok, CircleShape)
                         .padding(horizontal = 10.dp, vertical = 2.dp),
                     color = Color.White,
                     fontSize = 11.sp,

@@ -13,7 +13,14 @@ data class HangWindow(
     val collectDay: CollectDay,
     /** True when the chosen start hour had already passed and the window begins at the next full hour. */
     val startMoved: Boolean,
-)
+) {
+    val expectedHours: Int get() = endIdx - startIdx + 1
+
+    fun hourlySlots(): List<HourlyRow?> {
+        val byIdx = rows.associateBy { it.idx }
+        return (startIdx..endIdx).map { byIdx[it] }
+    }
+}
 
 /** Combines two forecasts by hour, ordered by hour. Where both have an hour, [primary] wins. */
 fun mergeRows(primary: List<HourlyRow>, fallback: List<HourlyRow>): List<HourlyRow> {

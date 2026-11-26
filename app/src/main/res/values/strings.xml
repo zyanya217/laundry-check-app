@@ -27,12 +27,17 @@
     <string name="v_ok">適合晾陽台</string>
     <string name="v_mid">勉強可以</string>
     <string name="v_bad">改晾室內</string>
-    <string name="no_data">預報資料不足</string>
+    <string name="no_data">暫時無法提供建議</string>
     <string name="ok_dry">整晚無雨，明早應該乾了。</string>
     <string name="ok_half">整晚無雨，明早大概半乾。</string>
     <string name="rain_mid">%1$s–%2$s 可能下雨，最高機率 %3$d%%。</string>
     <string name="rain_bad">%1$s–%2$s 會下雨，最高機率 %3$d%%，衣服會被淋濕。</string>
     <string name="humid">不會下雨，但夜間濕度高，明早可能還潮。</string>
+    <string name="estimated_ok_dry">預計降雨機率低，明早應該乾了。</string>
+    <string name="estimated_ok_half">預計降雨機率低，明早大概半乾。</string>
+    <string name="estimated_rain_mid">可能下雨，最高機率 %3$d%%。</string>
+    <string name="estimated_rain_bad">下雨機率最高 %3$d%%，建議改晾室內。</string>
+    <string name="estimated_humid">預計降雨機率低，但濕度偏高，明早可能還潮。</string>
     <string name="start_label">開始晾</string>
     <string name="collect_label">收衣</string>
     <string name="from_note">已過設定時間，從 %1$s 起算</string>
@@ -53,6 +58,7 @@
     <string name="z_dry">乾了</string>
     <string name="best_title">近期洗衣建議</string>
     <string name="best_top">最推薦</string>
+    <string name="best_relative">相對較佳</string>
     <string name="best_nodata">無預報</string>
     <string name="best_rain">降雨</string>
     <string name="src_cwa">資料:中央氣象署開放資料</string>

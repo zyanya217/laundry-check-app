@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import io.github.zyanya217.laundrycheck.R
+import io.github.zyanya217.laundrycheck.logic.HangWindow
 import io.github.zyanya217.laundrycheck.logic.pad
 import io.github.zyanya217.laundrycheck.logic.wallHour
-import io.github.zyanya217.laundrycheck.model.HourlyRow
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryFonts
 import io.github.zyanya217.laundrycheck.ui.theme.laundry
 import kotlin.math.min
@@ -54,7 +54,7 @@ private const val PLOT_BOT = 70f
 private fun y(v: Float) = PLOT_BOT - (PLOT_BOT - PLOT_TOP) * v / 100f
 
 @Composable
-fun HourlyChart(rows: List<HourlyRow>, label: String, modifier: Modifier = Modifier) {
+fun HourlyChart(window: HangWindow, label: String, modifier: Modifier = Modifier) {
     val ink = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val line = MaterialTheme.colorScheme.outlineVariant
@@ -94,9 +94,9 @@ fun HourlyChart(rows: List<HourlyRow>, label: String, modifier: Modifier = Modif
                 .aspectRatio(VIEW_W / 92f)
                 .semantics { if (label.isNotEmpty()) contentDescription = label },
         ) {
-            if (rows.isEmpty()) return@Canvas
+            val slots = window.hourlySlots()
             val k = size.width / VIEW_W
-            val step = (VIEW_W - PLOT_L - PLOT_R) / rows.size
+            val step = (VIEW_W - PLOT_L - PLOT_R) / slots.size
             fun x(i: Int) = (PLOT_L + step * (i + 0.5f)) * k
             fun labelStyle(color: Color, weight: FontWeight = FontWeight.Normal) =
                 TextStyle(fontFamily = LaundryFonts.Mono, fontSize = (10f * k).toSp(), color = color, fontWeight = weight)
@@ -109,11 +109,10 @@ fun HourlyChart(rows: List<HourlyRow>, label: String, modifier: Modifier = Modif
                 drawText(text, topLeft = Offset((PLOT_L - 6f) * k - text.size.width, gy - text.size.height / 2f))
             }
 
-            rows.forEachIndexed { i, r ->
+            slots.forEachIndexed { i, r ->
                 val cx = x(i)
-                val hour = wallHour(r.idx)
-                val last = i == rows.lastIndex
-                val barH = ((PLOT_BOT - PLOT_TOP) * r.pop.toFloat() / 100f) * k
+                val hour = wallHour(window.startIdx + i)
+                val last = i == slots.lastIndex
 
                 // A dashed rule where a new day starts.
                 if (i > 0 && hour == 0) {
@@ -126,8 +125,11 @@ fun HourlyChart(rows: List<HourlyRow>, label: String, modifier: Modifier = Modif
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f * k, 3f * k)),
                     )
                 }
-                if (barH > 0f) {
-                    drawRoundRect(ink, Offset(cx - 3f * k, PLOT_BOT * k - barH), Size(6f * k, barH), CornerRadius(3f * k))
+                if (r != null) {
+                    val barH = ((PLOT_BOT - PLOT_TOP) * r.pop.toFloat() / 100f) * k
+                    if (barH > 0f) {
+                        drawRoundRect(ink, Offset(cx - 3f * k, PLOT_BOT * k - barH), Size(6f * k, barH), CornerRadius(3f * k))
+                    }
                 }
                 if (last || step >= 24f || i % 2 == 0) {
                     val text = measurer.measure(
@@ -140,10 +142,14 @@ fun HourlyChart(rows: List<HourlyRow>, label: String, modifier: Modifier = Modif
 
             // Humidity as a dashed line over the bars.
             val humidity = Path()
-            rows.forEachIndexed { i, r ->
+            slots.forEachIndexed { i, r ->
+                if (r == null) return@forEachIndexed
                 val px = x(i)
                 val py = y(min(100f, r.rh.toFloat())) * k
-                if (i == 0) humidity.moveTo(px, py) else humidity.lineTo(px, py)
+                if (i == 0 || slots[i - 1] == null) humidity.moveTo(px, py) else humidity.lineTo(px, py)
+                if ((i == 0 || slots[i - 1] == null) && (i == slots.lastIndex || slots[i + 1] == null)) {
+                    drawCircle(mid, radius = 1.5f * k, center = Offset(px, py))
+                }
             }
             drawPath(
                 humidity,
