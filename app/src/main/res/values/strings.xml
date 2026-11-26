@@ -68,4 +68,9 @@
     <string name="err_hint">請稍後再試，或檢查網路連線。</string>
     <string name="retry">重新載入</string>
     <string name="aria_set">設定</string>
+    <string name="widget_description">今晚能不能晾衣服，一眼就知道。</string>
+    <string name="widget_morning">明早 %1$s</string>
+    <string name="widget_small">晾衣判斷 2×2</string>
+    <string name="widget_medium">晾衣判斷 4×2</string>
+    <string name="widget_large">晾衣判斷 4×3</string>
 </resources>

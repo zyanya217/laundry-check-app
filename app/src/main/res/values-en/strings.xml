@@ -68,4 +68,9 @@
     <string name="err_hint">Try again in a moment, or check your connection.</string>
     <string name="retry">Reload</string>
     <string name="aria_set">Settings</string>
+    <string name="widget_description">Whether tonight is good for drying laundry, at a glance.</string>
+    <string name="widget_morning">Morning: %1$s</string>
+    <string name="widget_small">Laundry check 2×2</string>
+    <string name="widget_medium">Laundry check 4×2</string>
+    <string name="widget_large">Laundry check 4×3</string>
 </resources>

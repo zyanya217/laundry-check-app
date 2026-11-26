@@ -21,6 +21,7 @@ import io.github.zyanya217.laundrycheck.ui.settings.SettingsSheet
 import io.github.zyanya217.laundrycheck.ui.settings.SettingsViewModel
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryTheme
 import io.github.zyanya217.laundrycheck.ui.theme.isDark
+import io.github.zyanya217.laundrycheck.widget.WidgetRefresh
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -55,5 +56,11 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // Back in the foreground: a forecast older than 15 minutes is reloaded.
         forecastViewModel.refreshIfStale()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Settings may have changed while the app was open: bring the home-screen widget up to date.
+        WidgetRefresh.refreshNow(applicationContext)
     }
 }
