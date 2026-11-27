@@ -34,6 +34,8 @@ class DataStoreSettingsRepository @Inject constructor(
         val START_HOUR = intPreferencesKey("start_hour")
         val COLLECT_HOUR = intPreferencesKey("collect_hour")
         val COVERED = booleanPreferencesKey("covered")
+        val NOTIFY_ENABLED = booleanPreferencesKey("notify_enabled")
+        val NOTIFY_HOUR = intPreferencesKey("notify_hour")
         val THEME = stringPreferencesKey("theme")
     }
 
@@ -46,6 +48,8 @@ class DataStoreSettingsRepository @Inject constructor(
             startHour = this[START_HOUR] ?: d.startHour,
             collectHour = this[COLLECT_HOUR] ?: d.collectHour,
             covered = this[COVERED] ?: d.covered,
+            notifyEnabled = this[NOTIFY_ENABLED] ?: d.notifyEnabled,
+            notifyHour = this[NOTIFY_HOUR] ?: d.notifyHour,
             theme = this[THEME]?.let { name -> ThemeChoice.entries.firstOrNull { it.name == name } } ?: d.theme,
         )
     }
@@ -56,6 +60,8 @@ class DataStoreSettingsRepository @Inject constructor(
         this[START_HOUR] = s.startHour
         this[COLLECT_HOUR] = s.collectHour
         this[COVERED] = s.covered
+        this[NOTIFY_ENABLED] = s.notifyEnabled
+        this[NOTIFY_HOUR] = s.notifyHour
         this[THEME] = s.theme.name
     }
 }
