@@ -76,6 +76,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onCovered(covered: Boolean) = update { it.copy(covered = covered) }
 
+    fun onNotifyEnabled(enabled: Boolean) = update { it.copy(notifyEnabled = enabled) }
+
+    fun onNotifyHour(hour: Int) = update { it.copy(notifyHour = hour) }
+
     fun onTheme(theme: ThemeChoice) = update { it.copy(theme = theme) }
 
     /** The screen asks for the permission first and calls this only once it is granted. */

@@ -58,9 +58,11 @@ import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
 import io.github.zyanya217.laundrycheck.ui.components.CloseIcon
 import io.github.zyanya217.laundrycheck.ui.components.LocateIcon
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryFonts
+import io.github.zyanya217.laundrycheck.widget.WidgetRefresh
 
 private val START_HOURS = (17..23).toList()
 private val COLLECT_HOURS = (5..10).toList()
+private val NOTIFY_HOURS = (0..23).toList()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +80,30 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) viewModel.useMyLocation() else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
+    // Asked only when the person turns the reminder on. Denied: the switch stays off and a hint shows.
+    var notifyDenied by remember { mutableStateOf(false) }
+    val notifyPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notifyDenied = !granted
+        if (granted) {
+            viewModel.onNotifyEnabled(true)
+            WidgetRefresh.schedule(context)
+        }
+    }
+    val onNotifyToggle = { enabled: Boolean ->
+        if (!enabled) {
+            notifyDenied = false
+            viewModel.onNotifyEnabled(false)
+        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notifyDenied = false
+            viewModel.onNotifyEnabled(true)
+            WidgetRefresh.schedule(context)
+        } else {
+            notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     ModalBottomSheet(
@@ -168,6 +194,33 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
                     Text(stringResource(R.string.covered_hint), color = muted, fontSize = 12.sp)
                 }
                 Switch(checked = settings.covered, onCheckedChange = viewModel::onCovered)
+            }
+
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.notify))
+                    Text(
+                        stringResource(if (notifyDenied) R.string.notify_denied else R.string.notify_hint),
+                        color = muted,
+                        fontSize = 12.sp,
+                    )
+                }
+                Switch(checked = settings.notifyEnabled, onCheckedChange = onNotifyToggle)
+            }
+            if (settings.notifyEnabled) {
+                DropdownField(
+                    label = stringResource(R.string.notify_from),
+                    value = settings.notifyHour,
+                    options = NOTIFY_HOURS,
+                    optionText = ::hh,
+                    onSelect = viewModel::onNotifyHour,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontFamily = LaundryFonts.Mono,
+                )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
