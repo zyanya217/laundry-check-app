@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -23,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -47,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +55,6 @@ import io.github.zyanya217.laundrycheck.logic.hh
 import io.github.zyanya217.laundrycheck.model.ThemeChoice
 import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
 import io.github.zyanya217.laundrycheck.ui.components.CloseIcon
-import io.github.zyanya217.laundrycheck.ui.components.LocateIcon
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryFonts
 import io.github.zyanya217.laundrycheck.widget.WidgetRefresh
 
@@ -71,16 +69,6 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
     val settings = state.settings
     val context = LocalContext.current
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-
-    // The permission prompt appears only here, when the person taps the button.
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) viewModel.useMyLocation() else viewModel.onPermissionDenied()
-    }
-    val onUseLocation = {
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) viewModel.useMyLocation() else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
 
     // Asked only when the person turns the reminder on. Denied: the switch stays off and a hint shows.
     var notifyDenied by remember { mutableStateOf(false) }
@@ -126,41 +114,6 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
                 ) {
                     CloseIcon(color = MaterialTheme.colorScheme.onSurface)
                 }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionLabel(stringResource(R.string.loc))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DropdownField(
-                        label = stringResource(R.string.county),
-                        value = settings.county,
-                        options = state.counties,
-                        optionText = { it },
-                        onSelect = viewModel::onCounty,
-                        modifier = Modifier.weight(1f),
-                    )
-                    DropdownField(
-                        label = stringResource(R.string.district),
-                        value = settings.district,
-                        options = state.districts,
-                        optionText = { it },
-                        onSelect = viewModel::onDistrict,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                OutlinedButton(
-                    onClick = onUseLocation,
-                    enabled = !state.gps.busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                ) {
-                    LocateIcon(color = MaterialTheme.colorScheme.onSurface)
-                    Text(
-                        stringResource(if (state.gps.busy) R.string.locating else R.string.use_gps),
-                        modifier = Modifier.padding(start = 8.dp),
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-                state.gps.message?.let { Text(it.text(), color = muted, fontSize = 13.sp) }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -209,18 +162,18 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
                         fontSize = 12.sp,
                     )
                 }
+                if (settings.notifyEnabled) {
+                    DropdownField(
+                        label = stringResource(R.string.notify_from),
+                        value = settings.notifyHour,
+                        options = NOTIFY_HOURS,
+                        optionText = ::hh,
+                        onSelect = viewModel::onNotifyHour,
+                        modifier = Modifier.width(96.dp),
+                        fontFamily = LaundryFonts.Mono,
+                    )
+                }
                 Switch(checked = settings.notifyEnabled, onCheckedChange = onNotifyToggle)
-            }
-            if (settings.notifyEnabled) {
-                DropdownField(
-                    label = stringResource(R.string.notify_from),
-                    value = settings.notifyHour,
-                    options = NOTIFY_HOURS,
-                    optionText = ::hh,
-                    onSelect = viewModel::onNotifyHour,
-                    modifier = Modifier.fillMaxWidth(),
-                    fontFamily = LaundryFonts.Mono,
-                )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -248,23 +201,9 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
     }
 }
 
-@Composable
-private fun GpsMessage.text(): String = when (this) {
-    is GpsMessage.Located -> stringResource(R.string.gps_ok, county, district)
-    GpsMessage.Denied -> stringResource(R.string.gps_denied)
-    GpsMessage.Unavailable -> stringResource(R.string.gps_unavailable)
-    GpsMessage.Timeout -> stringResource(R.string.gps_timeout)
-    GpsMessage.Outside -> stringResource(R.string.gps_outside)
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, letterSpacing = 0.06.em)
-}
-
 /** A labelled field that opens a menu of choices. Plain Material pieces, so it does not depend on experimental APIs. */
 @Composable
-private fun <T> DropdownField(
+internal fun <T> DropdownField(
     label: String,
     value: T,
     options: List<T>,
