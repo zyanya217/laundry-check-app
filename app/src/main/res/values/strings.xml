@@ -6,6 +6,7 @@
     <string name="close_settings">關閉設定</string>
     <string name="done">完成</string>
     <string name="loc">地點</string>
+    <string name="aria_loc">選擇地點</string>
     <string name="county">縣市</string>
     <string name="district">區域</string>
     <string name="use_gps">使用目前位置</string>
@@ -20,9 +21,9 @@
     <string name="covered">陽台有遮雨</string>
     <string name="covered_hint">有加蓋時，降雨機率的影響較小。</string>
     <string name="notify">晚上提醒</string>
-    <string name="notify_hint">只在今晚適合晾衣服時提醒，不適合就不打擾。</string>
+    <string name="notify_hint">到時間且今晚適合晾衣才提醒。</string>
     <string name="notify_denied">需要允許通知權限才能開啟提醒。</string>
-    <string name="notify_from">提醒時間（整點之後）</string>
+    <string name="notify_from">提醒時間</string>
     <string name="notify_channel">晾衣提醒</string>
     <string name="notify_title">今晚適合晾衣服</string>
     <string name="notify_text">%1$s 起可以晾，預計 %2$s 收。</string>
