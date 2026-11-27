@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.zyanya217.laundrycheck.ui.forecast.ForecastScreen
 import io.github.zyanya217.laundrycheck.ui.forecast.ForecastViewModel
+import io.github.zyanya217.laundrycheck.ui.settings.LocationSheet
 import io.github.zyanya217.laundrycheck.ui.settings.SettingsSheet
 import io.github.zyanya217.laundrycheck.ui.settings.SettingsViewModel
 import io.github.zyanya217.laundrycheck.ui.theme.LaundryTheme
@@ -35,15 +36,20 @@ class MainActivity : ComponentActivity() {
             val state by forecastViewModel.uiState.collectAsStateWithLifecycle()
             // Kept across the activity restart that a language change causes, so the sheet stays open.
             var sheetOpen by rememberSaveable { mutableStateOf(false) }
+            var locationOpen by rememberSaveable { mutableStateOf(false) }
 
             LaundryTheme(darkTheme = state.settings.theme.isDark()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     ForecastScreen(
                         state = state,
                         onOpenSettings = { sheetOpen = true },
+                        onOpenLocation = { locationOpen = true },
                         onReload = forecastViewModel::reload,
                         onStartHour = forecastViewModel::setStartHour,
                     )
+                    if (locationOpen) {
+                        LocationSheet(viewModel = settingsViewModel, onDismiss = { locationOpen = false })
+                    }
                     if (sheetOpen) {
                         SettingsSheet(viewModel = settingsViewModel, onDismiss = { sheetOpen = false })
                     }

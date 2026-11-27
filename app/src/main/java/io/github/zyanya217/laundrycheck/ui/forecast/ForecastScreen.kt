@@ -48,6 +48,7 @@ import io.github.zyanya217.laundrycheck.R
 import io.github.zyanya217.laundrycheck.logic.ForecastContent
 import io.github.zyanya217.laundrycheck.logic.hh
 import io.github.zyanya217.laundrycheck.logic.wallHour
+import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
 import io.github.zyanya217.laundrycheck.ui.components.SlidersIcon
 import io.github.zyanya217.laundrycheck.ui.components.monthDay
 import io.github.zyanya217.laundrycheck.ui.components.weekdayShort
@@ -59,6 +60,7 @@ import kotlin.math.roundToInt
 fun ForecastScreen(
     state: ForecastUiState,
     onOpenSettings: () -> Unit,
+    onOpenLocation: () -> Unit,
     onReload: () -> Unit,
     onStartHour: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -76,7 +78,7 @@ fun ForecastScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Header("${state.settings.county} ${state.settings.district}", onOpenSettings)
+            Header("${state.settings.county} ${state.settings.district}", onOpenLocation, onOpenSettings)
 
             when {
                 state.status == FetchStatus.ERROR -> ErrorCard(state.errorCode, onReload)
@@ -136,18 +138,22 @@ private fun ForecastBody(state: ForecastUiState, content: ForecastContent, onSta
 }
 
 @Composable
-private fun Header(place: String, onOpenSettings: () -> Unit) {
+private fun Header(place: String, onOpenLocation: () -> Unit, onOpenSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        val placeDescription = stringResource(R.string.aria_loc)
         Surface(
+            onClick = onOpenLocation,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f, fill = false).semantics { contentDescription = placeDescription },
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp).height(44.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(place, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                ChevronDownIcon(color = MaterialTheme.colorScheme.onSurface)
             }
         }
         val description = stringResource(R.string.aria_set)
