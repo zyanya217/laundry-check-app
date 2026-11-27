@@ -19,6 +19,13 @@
     <string name="collect_def">Collect at</string>
     <string name="covered">Balcony is covered</string>
     <string name="covered_hint">With a roof, rain probability matters less.</string>
+    <string name="notify">Evening reminder</string>
+    <string name="notify_hint">Only when tonight is good for drying; no message otherwise.</string>
+    <string name="notify_denied">Allow notifications to turn the reminder on.</string>
+    <string name="notify_from">Remind from (on the hour)</string>
+    <string name="notify_channel">Laundry reminder</string>
+    <string name="notify_title">Tonight is good for drying</string>
+    <string name="notify_text">Hang from %1$s, collect around %2$s.</string>
     <string name="lang">Language</string>
     <string name="theme">Appearance</string>
     <string name="th_auto">System</string>
