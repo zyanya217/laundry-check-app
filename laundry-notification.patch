@@ -1,0 +1,358 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index f683d4a..feefcd5 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -2,6 +2,7 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+     <uses-permission android:name="android.permission.INTERNET" />
++    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+     <!-- Approximate location is enough: it is only matched to the nearest district centre. -->
+     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+ 
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/data/settings/DataStoreSettingsRepository.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/data/settings/DataStoreSettingsRepository.kt
+index dc7ae62..0348c44 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/data/settings/DataStoreSettingsRepository.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/data/settings/DataStoreSettingsRepository.kt
+@@ -34,6 +34,8 @@ class DataStoreSettingsRepository @Inject constructor(
+         val START_HOUR = intPreferencesKey("start_hour")
+         val COLLECT_HOUR = intPreferencesKey("collect_hour")
+         val COVERED = booleanPreferencesKey("covered")
++        val NOTIFY_ENABLED = booleanPreferencesKey("notify_enabled")
++        val NOTIFY_HOUR = intPreferencesKey("notify_hour")
+         val THEME = stringPreferencesKey("theme")
+     }
+ 
+@@ -46,6 +48,8 @@ class DataStoreSettingsRepository @Inject constructor(
+             startHour = this[START_HOUR] ?: d.startHour,
+             collectHour = this[COLLECT_HOUR] ?: d.collectHour,
+             covered = this[COVERED] ?: d.covered,
++            notifyEnabled = this[NOTIFY_ENABLED] ?: d.notifyEnabled,
++            notifyHour = this[NOTIFY_HOUR] ?: d.notifyHour,
+             theme = this[THEME]?.let { name -> ThemeChoice.entries.firstOrNull { it.name == name } } ?: d.theme,
+         )
+     }
+@@ -56,6 +60,8 @@ class DataStoreSettingsRepository @Inject constructor(
+         this[START_HOUR] = s.startHour
+         this[COLLECT_HOUR] = s.collectHour
+         this[COVERED] = s.covered
++        this[NOTIFY_ENABLED] = s.notifyEnabled
++        this[NOTIFY_HOUR] = s.notifyHour
+         this[THEME] = s.theme.name
+     }
+ }
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/model/UserSettings.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/model/UserSettings.kt
+index 8a9e974..d46c571 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/model/UserSettings.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/model/UserSettings.kt
+@@ -13,5 +13,9 @@ data class UserSettings(
+     val collectHour: Int = 8,
+     /** The balcony has a roof, so rain probability counts for less. */
+     val covered: Boolean = false,
++    /** Remind in the evening when tonight is good for drying. */
++    val notifyEnabled: Boolean = false,
++    /** Taipei hour (0-23) from which the reminder may be sent. */
++    val notifyHour: Int = 20,
+     val theme: ThemeChoice = ThemeChoice.AUTO,
+ )
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/notification/ReminderNotifier.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/notification/ReminderNotifier.kt
+new file mode 100644
+index 0000000..0b45a1d
+--- /dev/null
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/notification/ReminderNotifier.kt
+@@ -0,0 +1,67 @@
++package io.github.zyanya217.laundrycheck.notification
++
++import android.annotation.SuppressLint
++import android.app.NotificationChannel
++import android.app.NotificationManager
++import android.app.PendingIntent
++import android.content.Context
++import android.content.Intent
++import androidx.core.app.NotificationCompat
++import androidx.core.app.NotificationManagerCompat
++import io.github.zyanya217.laundrycheck.MainActivity
++import io.github.zyanya217.laundrycheck.R
++import io.github.zyanya217.laundrycheck.logic.Level
++import io.github.zyanya217.laundrycheck.logic.hh
++import io.github.zyanya217.laundrycheck.logic.taipeiNowIdx
++import io.github.zyanya217.laundrycheck.logic.wallHour
++import io.github.zyanya217.laundrycheck.model.UserSettings
++import io.github.zyanya217.laundrycheck.widget.WidgetData
++
++/**
++ * Whether the evening reminder is due: switched on, tonight is good for drying, the chosen hour has come,
++ * and none was sent today. [nowIdx] is the Taipei hour index; [lastDay] the day number of the last reminder.
++ */
++fun shouldNotify(enabled: Boolean, notifyHour: Int, nowIdx: Int, level: Level?, lastDay: Int?): Boolean =
++    enabled &&
++        level == Level.OK &&
++        wallHour(nowIdx) >= notifyHour &&
++        Math.floorDiv(nowIdx, 24) != lastDay
++
++/** Posts the "tonight is good for drying" reminder. Called from the hourly refresh worker. */
++object ReminderNotifier {
++    private const val CHANNEL = "drying_reminder"
++    private const val NOTIFICATION_ID = 1
++    private const val PREFS = "reminder"
++    private const val KEY_LAST_DAY = "last_day"
++
++    @SuppressLint("MissingPermission") // areNotificationsEnabled() covers it: it is false without the permission.
++    fun notifyIfDue(context: Context, settings: UserSettings, data: WidgetData, nowIdx: Int = taipeiNowIdx()) {
++        val ready = data as? WidgetData.Ready
++        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
++        val lastDay = if (prefs.contains(KEY_LAST_DAY)) prefs.getInt(KEY_LAST_DAY, 0) else null
++        if (!shouldNotify(settings.notifyEnabled, settings.notifyHour, nowIdx, ready?.level, lastDay)) return
++
++        val manager = NotificationManagerCompat.from(context)
++        if (!manager.areNotificationsEnabled()) return
++        manager.createNotificationChannel(
++            NotificationChannel(CHANNEL, context.getString(R.string.notify_channel), NotificationManager.IMPORTANCE_DEFAULT),
++        )
++
++        val open = PendingIntent.getActivity(
++            context,
++            0,
++            Intent(context, MainActivity::class.java),
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
++        )
++        val notification = NotificationCompat.Builder(context, CHANNEL)
++            .setSmallIcon(R.drawable.shirt_ok)
++            .setContentTitle(context.getString(R.string.notify_title))
++            .setContentText(context.getString(R.string.notify_text, hh(ready!!.startHour), hh(ready.collectHour)))
++            .setContentIntent(open)
++            .setAutoCancel(true)
++            .build()
++        manager.notify(NOTIFICATION_ID, notification)
++        // Marked only after posting, so a failed attempt is tried again at the next refresh.
++        prefs.edit().putInt(KEY_LAST_DAY, Math.floorDiv(nowIdx, 24)).apply()
++    }
++}
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsSheet.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsSheet.kt
+index 40cfe6d..ba3e06e 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsSheet.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsSheet.kt
+@@ -58,9 +58,11 @@ import io.github.zyanya217.laundrycheck.ui.components.ChevronDownIcon
+ import io.github.zyanya217.laundrycheck.ui.components.CloseIcon
+ import io.github.zyanya217.laundrycheck.ui.components.LocateIcon
+ import io.github.zyanya217.laundrycheck.ui.theme.LaundryFonts
++import io.github.zyanya217.laundrycheck.widget.WidgetRefresh
+ 
+ private val START_HOURS = (17..23).toList()
+ private val COLLECT_HOURS = (5..10).toList()
++private val NOTIFY_HOURS = (0..23).toList()
+ 
+ @OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+@@ -80,6 +82,30 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+         if (granted) viewModel.useMyLocation() else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+     }
+ 
++    // Asked only when the person turns the reminder on. Denied: the switch stays off and a hint shows.
++    var notifyDenied by remember { mutableStateOf(false) }
++    val notifyPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
++        notifyDenied = !granted
++        if (granted) {
++            viewModel.onNotifyEnabled(true)
++            WidgetRefresh.schedule(context)
++        }
++    }
++    val onNotifyToggle = { enabled: Boolean ->
++        if (!enabled) {
++            notifyDenied = false
++            viewModel.onNotifyEnabled(false)
++        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
++            PackageManager.PERMISSION_GRANTED
++        ) {
++            notifyDenied = false
++            viewModel.onNotifyEnabled(true)
++            WidgetRefresh.schedule(context)
++        } else {
++            notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
++        }
++    }
++
+     ModalBottomSheet(
+         onDismissRequest = onDismiss,
+         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+@@ -170,6 +196,33 @@ fun SettingsSheet(viewModel: SettingsViewModel, onDismiss: () -> Unit) {
+                 Switch(checked = settings.covered, onCheckedChange = viewModel::onCovered)
+             }
+ 
++            Row(
++                Modifier.fillMaxWidth().heightIn(min = 48.dp),
++                horizontalArrangement = Arrangement.spacedBy(14.dp),
++                verticalAlignment = Alignment.CenterVertically,
++            ) {
++                Column(Modifier.weight(1f)) {
++                    Text(stringResource(R.string.notify))
++                    Text(
++                        stringResource(if (notifyDenied) R.string.notify_denied else R.string.notify_hint),
++                        color = muted,
++                        fontSize = 12.sp,
++                    )
++                }
++                Switch(checked = settings.notifyEnabled, onCheckedChange = onNotifyToggle)
++            }
++            if (settings.notifyEnabled) {
++                DropdownField(
++                    label = stringResource(R.string.notify_from),
++                    value = settings.notifyHour,
++                    options = NOTIFY_HOURS,
++                    optionText = ::hh,
++                    onSelect = viewModel::onNotifyHour,
++                    modifier = Modifier.fillMaxWidth(),
++                    fontFamily = LaundryFonts.Mono,
++                )
++            }
++
+             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                 Text(stringResource(R.string.lang), color = muted, fontSize = 12.sp)
+                 Segmented(
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsViewModel.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsViewModel.kt
+index 0e51f65..c58b824 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsViewModel.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/ui/settings/SettingsViewModel.kt
+@@ -76,6 +76,10 @@ class SettingsViewModel @Inject constructor(
+ 
+     fun onCovered(covered: Boolean) = update { it.copy(covered = covered) }
+ 
++    fun onNotifyEnabled(enabled: Boolean) = update { it.copy(notifyEnabled = enabled) }
++
++    fun onNotifyHour(hour: Int) = update { it.copy(notifyHour = hour) }
++
+     fun onTheme(theme: ThemeChoice) = update { it.copy(theme = theme) }
+ 
+     /** The screen asks for the permission first and calls this only once it is granted. */
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetEntryPoint.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetEntryPoint.kt
+index 0f0b556..2bd7a5f 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetEntryPoint.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetEntryPoint.kt
+@@ -5,6 +5,7 @@ import dagger.hilt.EntryPoint
+ import dagger.hilt.InstallIn
+ import dagger.hilt.android.EntryPointAccessors
+ import dagger.hilt.components.SingletonComponent
++import io.github.zyanya217.laundrycheck.data.settings.SettingsRepository
+ 
+ /** Glance widgets and workers are not Hilt-injected, so they reach the graph through this. */
+ @EntryPoint
+@@ -12,6 +13,8 @@ import dagger.hilt.components.SingletonComponent
+ interface WidgetEntryPoint {
+     fun dataSource(): WidgetDataSource
+ 
++    fun settings(): SettingsRepository
++
+     companion object {
+         fun from(context: Context): WidgetEntryPoint =
+             EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
+diff --git a/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetRefresh.kt b/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetRefresh.kt
+index 4a362ed..a2d74c2 100644
+--- a/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetRefresh.kt
++++ b/app/src/main/java/io/github/zyanya217/laundrycheck/widget/WidgetRefresh.kt
+@@ -12,6 +12,8 @@ import androidx.work.OneTimeWorkRequestBuilder
+ import androidx.work.PeriodicWorkRequestBuilder
+ import androidx.work.WorkManager
+ import androidx.work.WorkerParameters
++import io.github.zyanya217.laundrycheck.notification.ReminderNotifier
++import kotlinx.coroutines.flow.first
+ import java.util.concurrent.TimeUnit
+ 
+ /** Fetches a fresh forecast and redraws every placed widget. */
+@@ -19,16 +21,20 @@ class WidgetRefreshWorker(context: Context, params: WorkerParameters) : Coroutin
+ 
+     override suspend fun doWork(): Result {
+         val context = applicationContext
+-        // Nothing placed on a home screen: no reason to use the network.
++        val entry = WidgetEntryPoint.from(context)
++        val settings = entry.settings().settings.first()
++        // Nothing placed on a home screen and no reminder wanted: no reason to use the network.
+         val manager = GlanceAppWidgetManager(context)
+         val placed = listOf(SmallWidget::class.java, MediumWidget::class.java, LargeWidget::class.java)
+             .any { manager.getGlanceIds(it).isNotEmpty() }
+-        if (!placed) return Result.success()
++        if (!placed && !settings.notifyEnabled) return Result.success()
+ 
+-        val fetched = WidgetEntryPoint.from(context).dataSource().refresh()
++        val fetched = entry.dataSource().refresh()
+         SmallWidget().updateAll(context)
+         MediumWidget().updateAll(context)
+         LargeWidget().updateAll(context)
++        // Only a fresh forecast may trigger the reminder; a failed fetch is retried instead.
++        if (fetched) ReminderNotifier.notifyIfDue(context, settings, entry.dataSource().snapshot())
+         return if (fetched) Result.success() else Result.retry()
+     }
+ }
+diff --git a/app/src/main/res/values-en/strings.xml b/app/src/main/res/values-en/strings.xml
+index f26763c..f76fa0e 100644
+--- a/app/src/main/res/values-en/strings.xml
++++ b/app/src/main/res/values-en/strings.xml
+@@ -19,6 +19,13 @@
+     <string name="collect_def">Collect at</string>
+     <string name="covered">Balcony is covered</string>
+     <string name="covered_hint">With a roof, rain probability matters less.</string>
++    <string name="notify">Evening reminder</string>
++    <string name="notify_hint">Only when tonight is good for drying; no message otherwise.</string>
++    <string name="notify_denied">Allow notifications to turn the reminder on.</string>
++    <string name="notify_from">Remind from (on the hour)</string>
++    <string name="notify_channel">Laundry reminder</string>
++    <string name="notify_title">Tonight is good for drying</string>
++    <string name="notify_text">Hang from %1$s, collect around %2$s.</string>
+     <string name="lang">Language</string>
+     <string name="theme">Appearance</string>
+     <string name="th_auto">System</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 06c0060..88f62b9 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -19,6 +19,13 @@
+     <string name="collect_def">收衣時間</string>
+     <string name="covered">陽台有遮雨</string>
+     <string name="covered_hint">有加蓋時，降雨機率的影響較小。</string>
++    <string name="notify">晚上提醒</string>
++    <string name="notify_hint">只在今晚適合晾衣服時提醒，不適合就不打擾。</string>
++    <string name="notify_denied">需要允許通知權限才能開啟提醒。</string>
++    <string name="notify_from">提醒時間（整點之後）</string>
++    <string name="notify_channel">晾衣提醒</string>
++    <string name="notify_title">今晚適合晾衣服</string>
++    <string name="notify_text">%1$s 起可以晾，預計 %2$s 收。</string>
+     <string name="lang">語言</string>
+     <string name="theme">外觀</string>
+     <string name="th_auto">跟隨系統</string>
+diff --git a/app/src/test/java/io/github/zyanya217/laundrycheck/notification/ShouldNotifyTest.kt b/app/src/test/java/io/github/zyanya217/laundrycheck/notification/ShouldNotifyTest.kt
+new file mode 100644
+index 0000000..d0b217f
+--- /dev/null
++++ b/app/src/test/java/io/github/zyanya217/laundrycheck/notification/ShouldNotifyTest.kt
+@@ -0,0 +1,32 @@
++package io.github.zyanya217.laundrycheck.notification
++
++import io.github.zyanya217.laundrycheck.logic.Level
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class ShouldNotifyTest {
++    private val day = 20_000
++    private fun idx(hour: Int) = day * 24 + hour
++
++    @Test fun notifiesWhenGoodAndHourReached() =
++        assertTrue(shouldNotify(true, 20, idx(20), Level.OK, null))
++
++    @Test fun laterThanChosenHourStillNotifies() =
++        assertTrue(shouldNotify(true, 20, idx(23), Level.OK, day - 1))
++
++    @Test fun waitsForChosenHour() =
++        assertFalse(shouldNotify(true, 20, idx(19), Level.OK, null))
++
++    @Test fun onlyOncePerDay() =
++        assertFalse(shouldNotify(true, 20, idx(22), Level.OK, day))
++
++    @Test fun silentWhenNotGood() {
++        assertFalse(shouldNotify(true, 20, idx(21), Level.MID, null))
++        assertFalse(shouldNotify(true, 20, idx(21), Level.BAD, null))
++        assertFalse(shouldNotify(true, 20, idx(21), null, null))
++    }
++
++    @Test fun silentWhenSwitchedOff() =
++        assertFalse(shouldNotify(false, 20, idx(21), Level.OK, null))
++}
