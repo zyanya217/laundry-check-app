@@ -12,6 +12,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import io.github.zyanya217.laundrycheck.notification.ReminderNotifier
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /** Fetches a fresh forecast and redraws every placed widget. */
@@ -19,16 +21,20 @@ class WidgetRefreshWorker(context: Context, params: WorkerParameters) : Coroutin
 
     override suspend fun doWork(): Result {
         val context = applicationContext
-        // Nothing placed on a home screen: no reason to use the network.
+        val entry = WidgetEntryPoint.from(context)
+        val settings = entry.settings().settings.first()
+        // Nothing placed on a home screen and no reminder wanted: no reason to use the network.
         val manager = GlanceAppWidgetManager(context)
         val placed = listOf(SmallWidget::class.java, MediumWidget::class.java, LargeWidget::class.java)
             .any { manager.getGlanceIds(it).isNotEmpty() }
-        if (!placed) return Result.success()
+        if (!placed && !settings.notifyEnabled) return Result.success()
 
-        val fetched = WidgetEntryPoint.from(context).dataSource().refresh()
+        val fetched = entry.dataSource().refresh()
         SmallWidget().updateAll(context)
         MediumWidget().updateAll(context)
         LargeWidget().updateAll(context)
+        // Only a fresh forecast may trigger the reminder; a failed fetch is retried instead.
+        if (fetched) ReminderNotifier.notifyIfDue(context, settings, entry.dataSource().snapshot())
         return if (fetched) Result.success() else Result.retry()
     }
 }
